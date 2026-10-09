@@ -6,8 +6,23 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "db:init": "node db/seed.js",
+    "db:local:start": "node db/local.js start",
+    "db:local:stop": "node db/local.js stop",
+    "test:postman": "node test/run-postman.js",
+    "db:exercises": "node db/exercises.js"
   },
-  "engines": { "node": ">=22.12.0" },
-  "dependencies": { "cors": "^2.8.5", "express": "^5.1.0" }
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.6",
+    "express": "^5.1.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "newman": "^6.2.2"
+  }
 }

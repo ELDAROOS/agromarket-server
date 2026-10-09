@@ -1,4 +1,10 @@
 node_modules/
-*.log
 .env
+.env.*
+!.env.example
+.postgres/
+.postgres-socket/
+*.log
 .DS_Store
+
+.postgres-init-password
