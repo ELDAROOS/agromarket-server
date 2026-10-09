@@ -1,0 +1,28 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "кек, 1 кг",
+      "price": 350,
+      "image": "https://placehold.co/300x200"
+    },
+    {
+      "id": 2,
+      "name": "лол, 1 л",
+      "price": 4500,
+      "image": "https://placehold.co/300x200"
+    },
+    {
+      "id": 3,
+      "name": "дешка, 1 л",
+      "price": 600,
+      "image": "https://placehold.co/300x200"
+    },
+    {
+      "id": 4,
+      "name": "джяй, 1кг",
+      "price": 700,
+      "image": "https://placehold.co/300x200"
+    }
+  ]
+}

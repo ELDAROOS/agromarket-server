@@ -1,0 +1,13 @@
+{
+  "name": "agromarket-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=22.12.0" },
+  "dependencies": { "cors": "^2.8.5", "express": "^5.1.0" }
+}
