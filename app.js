@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -16,7 +15,9 @@ export function createApp({ database = pool, authConfig = getAuthConfig() } = {}
   const auth = createAuthMiddleware(database, authConfig);
   app.use(helmet());
   app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
-  app.use(logger);
+  if (process.env.NODE_ENV !== 'test') {
+    app.use(logger);
+  }
   app.use(express.json({ limit: '10kb' }));
   app.get('/', (req, res) => res.send('АгроМаркет API работает'));
   app.get('/api/health', async (req, res) => {
@@ -31,3 +32,6 @@ export function createApp({ database = pool, authConfig = getAuthConfig() } = {}
   app.use(errorHandler);
   return app;
 }
+
+const app = createApp();
+export default app;
