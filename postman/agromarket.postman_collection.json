@@ -2,12 +2,28 @@
   "info": {
     "name": "AgroMarket API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Лабораторная 6. Запускать в указанном порядке. Каждый запуск создаёт и удаляет собственный товар; созданная заявка остаётся, так как DELETE orders не предусмотрен ТЗ. npm run test:postman использует отдельную временную схему и удаляет все тестовые данные после двух запусков."
+    "description": "ЛР7. Укажите adminEmail и adminPassword в локальном Environment Postman. Реальный пароль и токены в экспорт не включены. Наследуемый Bearer token заполняется запросом входа администратора. npm run test:postman берёт пароль из .env, использует временную схему и запускает коллекцию дважды."
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@agromarket.kz"
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "userToken",
+      "value": ""
     },
     {
       "key": "productId",
@@ -24,7 +40,10 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/health"
+        "url": "{{baseUrl}}/health",
+        "auth": {
+          "type": "noauth"
+        }
       },
       "event": [
         {
@@ -40,7 +59,162 @@
       ]
     },
     {
-      "name": "02 Поиск товаров",
+      "name": "02 Вход администратора",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"{{adminEmail}}\", \"password\": \"{{adminPassword}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+              "pm.test('Роль admin, хэш скрыт', () => { pm.expect(pm.response.json().user.role).to.eql('admin'); pm.expect(pm.response.json().user).to.not.have.property('password_hash'); });",
+              "pm.collectionVariables.set('token', pm.response.json().token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Регистрация",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Тест ЛР7\", \"email\": \"user{{$guid}}@test.kz\", \"password\": \"Lab7-test-password\", \"role\": \"admin\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 201', () => pm.response.to.have.status(201));",
+              "pm.test('Регистрация только user, хэш скрыт', () => { const user=pm.response.json().user; pm.expect(user.role).to.eql('user'); pm.expect(user).to.not.have.property('password_hash'); });",
+              "pm.collectionVariables.set('userToken', pm.response.json().token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Товар без токена",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Недоступно\", \"price\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Товар от user",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Недоступно\", \"price\": 1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Поиск товаров",
       "request": {
         "method": "GET",
         "header": [],
@@ -60,7 +234,7 @@
       ]
     },
     {
-      "name": "03 Создать товар",
+      "name": "07 Создать товар",
       "request": {
         "method": "POST",
         "header": [
@@ -95,7 +269,7 @@
       ]
     },
     {
-      "name": "04 Получить товар",
+      "name": "08 Получить товар",
       "request": {
         "method": "GET",
         "header": [],
@@ -115,7 +289,7 @@
       ]
     },
     {
-      "name": "05 Изменить товар",
+      "name": "09 Изменить товар",
       "request": {
         "method": "PUT",
         "header": [
@@ -149,7 +323,7 @@
       ]
     },
     {
-      "name": "06 Товар плохие данные",
+      "name": "10 Товар плохие данные",
       "request": {
         "method": "POST",
         "header": [
@@ -182,7 +356,7 @@
       ]
     },
     {
-      "name": "07 Создать заявку",
+      "name": "11 Создать заявку",
       "request": {
         "method": "POST",
         "header": [
@@ -200,6 +374,9 @@
               "language": "json"
             }
           }
+        },
+        "auth": {
+          "type": "noauth"
         }
       },
       "event": [
@@ -217,7 +394,7 @@
       ]
     },
     {
-      "name": "08 Заявка меньше 10 кг",
+      "name": "12 Заявка меньше 10 кг",
       "request": {
         "method": "POST",
         "header": [
@@ -235,6 +412,9 @@
               "language": "json"
             }
           }
+        },
+        "auth": {
+          "type": "noauth"
         }
       },
       "event": [
@@ -251,7 +431,7 @@
       ]
     },
     {
-      "name": "09 Статус заявки",
+      "name": "13 Статус заявки",
       "request": {
         "method": "PATCH",
         "header": [
@@ -285,7 +465,7 @@
       ]
     },
     {
-      "name": "10 Удалить товар",
+      "name": "14 Удалить товар",
       "request": {
         "method": "DELETE",
         "header": [],
@@ -305,7 +485,7 @@
       ]
     },
     {
-      "name": "11 Удалённый товар",
+      "name": "15 Удалённый товар",
       "request": {
         "method": "GET",
         "header": [],
@@ -322,6 +502,134 @@
           }
         }
       ]
+    },
+    {
+      "name": "16 Мой профиль",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/me",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+              "pm.test('Нет хэша', () => pm.expect(pm.response.json()).to.not.have.property('password_hash'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Заявки от user запрещены",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/orders",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Мои заявки",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/orders/my",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+              "pm.test('Массив заявок', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Испорченный токен",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/me",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "broken-token",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Статус 401', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }

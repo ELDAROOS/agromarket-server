@@ -10,6 +10,7 @@ const PG_CLIENT_ERRORS = {
 
 export function errorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
+  if (err.code === '23505') return res.status(409).json({ error: 'Такая запись уже существует' });
   if (PG_CLIENT_ERRORS[err.code]) {
     return res.status(400).json({ error: PG_CLIENT_ERRORS[err.code], detail: err.message });
   }
@@ -17,7 +18,7 @@ export function errorHandler(err, req, res, next) {
     return res.status(400).json({ error: 'Некорректный JSON в теле запроса' });
   }
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Тело запроса слишком большое' });
+    return res.status(413).json({ error: 'Слишком большой запрос' });
   }
   console.error(err);
   res.status(500).json({ error: 'Внутренняя ошибка сервера' });

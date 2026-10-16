@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { pool } from './pool.js';
+import { seedAdmin } from './admin.js';
 
 let client;
 try {
@@ -18,8 +19,9 @@ try {
       VALUES ($1, $2, $3, $4, $5)`,
     [p.name, p.category ?? null, Math.round(Number(p.price)), p.unit ?? 'кг', p.image ?? null]);
   }
+  await seedAdmin(client);
   await client.query('COMMIT');
-  console.log(`Готово: таблицы созданы, товаров добавлено — ${products.length}`);
+  console.log(`Готово: таблицы созданы, товаров добавлено — ${products.length}, администратор создан`);
 } catch (err) {
   if (client) await client.query('ROLLBACK');
   console.error(err.message);

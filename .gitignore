@@ -8,3 +8,5 @@ node_modules/
 .DS_Store
 
 .postgres-init-password
+
+ADMIN_ACCESS.txt

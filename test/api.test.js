@@ -6,7 +6,7 @@ import { createApp } from '../app.js';
 import { testDatabase } from './database.js';
 import { errorHandler } from '../middleware/errorHandler.js';
 
-let fixture, server, base;
+let fixture, server, base, adminToken;
 async function listen(app) {
   const instance = app.listen(0, '127.0.0.1');
   await once(instance, 'listening');
@@ -16,13 +16,17 @@ before(async () => {
   fixture = await testDatabase();
   const result = await listen(createApp({ database: fixture.database }));
   server = result.instance; base = result.url;
+  const login = await fetch(base + '/api/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email:process.env.ADMIN_EMAIL,password:process.env.ADMIN_PASSWORD }) });
+  assert.equal(login.status,200); adminToken=(await login.json()).token;
 });
 after(async () => {
   if (server) await new Promise(resolve => server.close(resolve));
   await fixture?.cleanup();
 });
 const request = (path, method = 'GET', body) => fetch(base + path, {
-  method, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  method, headers: { Authorization: `Bearer ${adminToken}`, ...(body === undefined ? {} : {'Content-Type':'application/json'}) },
+  ...(body === undefined ? {} : {body:JSON.stringify(body)}),
 });
 const json = async (path, method, body, expected = 200) => {
   const response = await request(path, method, body);
@@ -154,7 +158,7 @@ test('новый экземпляр сервера видит ранее соз�
   const order = await json('/api/orders','POST',orderBody,201);
   const second = await listen(createApp({database:fixture.database}));
   try {
-    const orders = await (await fetch(second.url+'/api/orders')).json();
+    const orders = await (await fetch(second.url+'/api/orders',{headers:{Authorization:`Bearer ${adminToken}`}})).json();
     assert.ok(orders.some(o=>o.id===order.id));
   } finally { await new Promise(resolve=>second.instance.close(resolve)); }
 });

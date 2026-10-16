@@ -14,8 +14,9 @@ function validateProduct(body) {
 }
 const values = body => [body.name.trim(), body.category ?? null, Number(body.price), body.unit ?? 'кг', body.image ?? null];
 
-export function createProductsRouter(pool) {
+export function createProductsRouter(pool, auth) {
   const router = Router();
+  const adminOnly = [auth.requireAuth, auth.requireRole('admin')];
   router.get('/', async (req, res) => {
     const { search = '', maxPrice, limit = '20', offset = '0', sort = '' } = req.query;
     if (typeof search !== 'string' || typeof sort !== 'string' ||
@@ -42,7 +43,7 @@ export function createProductsRouter(pool) {
     if (!rows.length) return res.status(404).json({ error: 'Товар не найден' });
     res.json(rows[0]);
   });
-  router.post('/', async (req, res) => {
+  router.post('/', adminOnly, async (req, res) => {
     const body = req.body || {};
     const error = validateProduct(body);
     if (error) return res.status(400).json({ error });
@@ -50,7 +51,7 @@ export function createProductsRouter(pool) {
       VALUES ($1, $2, $3, $4, $5) RETURNING *`, values(body));
     res.status(201).json(rows[0]);
   });
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', adminOnly, async (req, res) => {
     const body = req.body || {};
     const error = validateProduct(body);
     if (error) return res.status(400).json({ error });
@@ -59,7 +60,7 @@ export function createProductsRouter(pool) {
     if (!rows.length) return res.status(404).json({ error: 'Товар не найден' });
     res.json(rows[0]);
   });
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', adminOnly, async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM products WHERE id=$1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Товар не найден' });
     res.status(204).end();
