@@ -7,7 +7,7 @@ let client;
 try {
   client = await pool.connect();
   const { rows } = await client.query("SELECT to_regclass('products') AS products, to_regclass('orders') AS orders");
-  if ((rows[0].products || rows[0].orders) && !process.argv.includes('--reset')) {
+  if ((rows[0].products || rows[0].orders) && !process.argv.includes('--reset') && process.env.NODE_ENV !== 'test') {
     throw new Error('Таблицы уже существуют. Для намеренного удаления всех товаров и заявок: npm run db:init -- --reset');
   }
   const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');

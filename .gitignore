@@ -10,3 +10,6 @@ node_modules/
 .postgres-init-password
 
 ADMIN_ACCESS.txt
+.env.test
+coverage/
+
