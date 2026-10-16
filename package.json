@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node --test test/*.test.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
     "db:init": "node db/seed.js",
     "db:local:start": "node db/local.js start",
     "db:local:stop": "node db/local.js stop",
@@ -28,6 +30,9 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "newman": "^6.2.2"
+    "@vitest/coverage-v8": "^5.0.5",
+    "newman": "^6.2.2",
+    "supertest": "^7.3.1",
+    "vitest": "^4.1.12"
   }
 }
