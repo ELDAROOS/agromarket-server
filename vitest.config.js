@@ -7,6 +7,7 @@ const { parsed } = dotenv.config({ path: '.env.test', override: true, quiet: tru
 
 export default defineConfig({
   test: {
+    include: ['tests/**/*.test.js'],
     env: parsed,                           // переменные для файлов с тестами
     globalSetup: './tests/globalSetup.js', // один раз перед всеми тестами
     setupFiles: ['./tests/setup.js'],      // перед каждым файлом тестов
