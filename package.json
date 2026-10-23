@@ -14,7 +14,8 @@
     "db:local:stop": "node db/local.js stop",
     "test:postman": "node test/run-postman.js",
     "db:exercises": "node db/exercises.js",
-    "db:migrate": "node db/migrate.js"
+    "db:migrate": "node db/migrate.js",
+    "smoke": "node scripts/smoke.js"
   },
   "engines": {
     "node": ">=22.12.0"
