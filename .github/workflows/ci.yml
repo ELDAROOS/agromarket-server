@@ -5,6 +5,9 @@ on:
     branches: [main]    # каждый push в main
   pull_request:         # и каждый Pull Request в любую ветку
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -48,3 +51,28 @@ jobs:
           cache: npm
       - run: npm ci                        # зависимости строго по package-lock.json
       - run: npm test                      # globalSetup сам выполнит db:init
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy tested commit to Render
+        run: node scripts/deploy.js
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_SHA: ${{ github.sha }}
+      - name: Production smoke test
+        run: node scripts/smoke.js
+        env:
+          API_URL: ${{ vars.API_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          EXPECTED_VERSION: ${{ github.sha }}

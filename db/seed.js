@@ -1,7 +1,15 @@
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { pool } from './pool.js';
+import { isLocalDatabase } from './seedSafety.js';
 import { seedAdmin } from './admin.js';
+
+// Проверяем именно hostname, а не слово localhost в пароле или имени базы.
+if (!isLocalDatabase() && !process.argv.includes('--force')) {
+  console.error('Отказ: db:init запущен НЕ на локальной базе — все данные будут удалены.');
+  console.error('Только для новой пустой облачной базы: node db/seed.js --force');
+  process.exit(1);
+}
 
 let client;
 try {
