@@ -1,22 +1,11 @@
 import { Router } from 'express';
-
-function validateProduct(body) {
-  const { name, price, category, unit, image } = body;
-  if (typeof name !== 'string' || !name.trim()) return 'Поле name обязательно';
-  if (!['number', 'string'].includes(typeof price) || !String(price).trim() ||
-      !Number.isInteger(Number(price)) || Number(price) < 0 || Number(price) > 2147483647) {
-    return 'Поле price должно быть целым числом ≥ 0';
-  }
-  if ([category, unit, image].some(value => value !== undefined && value !== null && typeof value !== 'string')) {
-    return 'Поля category, unit и image должны быть строками';
-  }
-  return null;
-}
-const values = body => [body.name.trim(), body.category ?? null, Number(body.price), body.unit ?? 'кг', body.image ?? null];
+import { validate, idParam } from '../middleware/validate.js';
+import { productSchema, productUpdateSchema } from '../validation/schemas.js';
 
 export function createProductsRouter(pool, auth) {
   const router = Router();
-  const adminOnly = [auth.requireAuth, auth.requireRole('admin')];
+  const adminOnly = [auth.requireAuth, auth.requireRole('farmer', 'admin')];
+
   router.get('/', async (req, res) => {
     const { search = '', maxPrice, limit = '20', offset = '0', sort = '' } = req.query;
     if (typeof search !== 'string' || typeof sort !== 'string' ||
@@ -38,32 +27,51 @@ export function createProductsRouter(pool, auth) {
     [`%${search}%`, maxPrice ?? null, Number(limit), Number(offset)]);
     res.json(rows);
   });
-  router.get('/:id', async (req, res) => {
+
+  router.get('/:id', idParam, async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Товар не найден' });
     res.json(rows[0]);
   });
-  router.post('/', adminOnly, async (req, res) => {
-    const body = req.body || {};
-    const error = validateProduct(body);
-    if (error) return res.status(400).json({ error });
+
+  router.post('/', adminOnly, validate(productSchema), async (req, res) => {
+    const body = req.body;
     const { rows } = await pool.query(`INSERT INTO products (name, category, price, unit, image)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *`, values(body));
+      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [body.name, body.category ?? null, Number(body.price), body.unit ?? 'кг', body.image ?? null]);
     res.status(201).json(rows[0]);
   });
-  router.put('/:id', adminOnly, async (req, res) => {
-    const body = req.body || {};
-    const error = validateProduct(body);
-    if (error) return res.status(400).json({ error });
-    const { rows } = await pool.query(`UPDATE products SET name=$1, category=$2, price=$3, unit=$4, image=$5
-      WHERE id=$6 RETURNING *`, [...values(body), req.params.id]);
+
+  async function updateProductHandler(req, res) {
+    const fields = [];
+    const vals = [];
+    let idx = 1;
+    for (const [key, val] of Object.entries(req.body)) {
+      if (['name', 'category', 'price', 'unit', 'image'].includes(key)) {
+        fields.push(`${key} = $${idx++}`);
+        vals.push(key === 'price' ? Number(val) : val);
+      }
+    }
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'Нет полей для обновления' });
+    }
+    vals.push(req.params.id);
+    const { rows } = await pool.query(
+      `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      vals
+    );
     if (!rows.length) return res.status(404).json({ error: 'Товар не найден' });
     res.json(rows[0]);
-  });
-  router.delete('/:id', adminOnly, async (req, res) => {
+  }
+
+  router.put('/:id', idParam, adminOnly, validate(productUpdateSchema), updateProductHandler);
+  router.patch('/:id', idParam, adminOnly, validate(productUpdateSchema), updateProductHandler);
+
+  router.delete('/:id', idParam, adminOnly, async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM products WHERE id=$1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Товар не найден' });
     res.status(204).end();
   });
+
   return router;
 }

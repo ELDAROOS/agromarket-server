@@ -4,16 +4,18 @@ import app from '../app.js';
 import { uniqueEmail } from './helpers.js';
 
 describe('Rate limit: ограничение попыток входа', () => {
-  it('после 5 неудачных попыток 6-я возвращает 429 и Retry-After', async () => {
+  it('после 10 неудачных попыток 11-я возвращает 429 и Retry-After', async () => {
     const email = uniqueEmail('ratelimit');
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const res = await request(app)
         .post('/api/auth/login')
+        .set('x-test-rate-limit', 'true')
         .send({ email, password: 'wrong-password' });
       expect(res.status).toBe(401);
     }
     const res = await request(app)
       .post('/api/auth/login')
+      .set('x-test-rate-limit', 'true')
       .send({ email, password: 'wrong-password' });
     expect(res.status).toBe(429);
     expect(res.headers['retry-after']).toBeTruthy();
