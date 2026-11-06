@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { validateOrder } from '../middleware/validateOrder.js';
+import { idParam } from '../middleware/validate.js';
 
 export function createOrdersRouter(pool, auth) {
   const router = Router();
@@ -26,7 +27,7 @@ export function createOrdersRouter(pool, auth) {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [product_id, name, email, phone, quantity, date, comment, req.user?.id ?? null]);
     res.status(201).json(rows[0]);
   });
-  router.patch('/:id', adminOnly, async (req, res) => {
+  router.patch('/:id', idParam, adminOnly, async (req, res) => {
     const { status } = req.body || {};
     if (status === undefined || status === null || status === '') {
       return res.status(400).json({ error: 'Поле status обязательно' });
