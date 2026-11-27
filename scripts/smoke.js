@@ -24,11 +24,12 @@ async function main() {
   }
   assert(ready, `Не дождались версии ${EXPECTED || '(любой)'} за 10 минут`);
   const checks = [
-    ['каталог непустой', async () => {
+    ['каталог непустой, остатки неотрицательны', async () => {
       const response = await request('/products');
       assert.equal(response.status, 200);
       const data = await response.json();
       assert(Array.isArray(data) && data.length > 0);
+      assert(data.every(({ stock }) => Number.isInteger(stock) && stock >= 0));
     }],
     ['без токена товар не создать (401)', async () => {
       // Пустое тело не создаст товар даже при регрессии авторизации.
