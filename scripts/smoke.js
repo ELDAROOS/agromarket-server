@@ -45,10 +45,9 @@ async function main() {
       const denied = await request('/products', { headers: { Origin: 'https://evil.example' } });
       assert.equal(denied.headers.get('access-control-allow-origin'), null);
     }],
-    ['несуществующий товар — 404', async () => {
-      // SERIAL выдаёт положительные id; не используем потенциально существующий 999999.
+    ['некорректный идентификатор товара — 400', async () => {
       const response = await request('/products/-1');
-      assert.equal(response.status, 404);
+      assert.equal(response.status, 400);
     }],
     ['категории содержат числовые количества', async () => {
       const response = await request('/categories');
