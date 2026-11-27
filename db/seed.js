@@ -29,6 +29,7 @@ try {
   }
   await seedAdmin(client);
   await client.query('COMMIT');
+  await client.query(readFileSync(new URL('./migrations/013_orders.sql', import.meta.url), 'utf8'));
   console.log(`Готово: таблицы созданы, товаров добавлено — ${products.length}, администратор создан`);
 } catch (err) {
   if (client) await client.query('ROLLBACK');

@@ -1,4 +1,6 @@
 -- Разрушительное пересоздание: seed.js требует --reset для непустой схемы.
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS checkout_orders;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS users;

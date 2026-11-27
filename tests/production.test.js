@@ -43,9 +43,14 @@ describe('production readiness', () => {
   });
   it('ошибка PostgreSQL не раскрывает detail в production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    const res = await request(app).get('/api/products/abc');
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'Неверный формат значения' });
+    const res = mockRes();
+    errorHandler({ code: '22P02', message: 'детали базы' }, {}, res, vi.fn());
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Неверный формат значения' });
+
+    const reqRes = await request(app).get('/api/products/abc');
+    expect(reqRes.status).toBe(400);
+    expect(reqRes.body.detail).toBeUndefined();
   });
   it('предохранитель не принимает localhost в чужом URL', () => {
     expect(isLocalDatabase({ DATABASE_URL: 'postgres://user:localhost@remote.example/db' })).toBe(false);

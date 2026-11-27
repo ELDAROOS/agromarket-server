@@ -17,13 +17,21 @@ export function createApp({ database = pool, authConfig = getAuthConfig() } = {}
   app.set('trust proxy', 1);
   const version = (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7);
   app.use(helmet());
-  const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
-    .split(',').map(origin => origin.trim()).filter(Boolean);
-  app.use(cors({ origin: allowedOrigins }));
+  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.use(cors({
+    origin(origin, callback) {
+      // запросы без Origin (curl, Postman, тесты Supertest) пропускаем
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false); // браузер с чужого сайта не получит ответ
+    },
+  }));
   if (process.env.NODE_ENV !== 'test') {
     app.use(logger);
   }
-  app.use(express.json({ limit: '10kb' }));
+  app.use(express.json({ limit: '100kb' }));
   app.get('/', (req, res) => res.send('АгроМаркет API работает'));
   app.get('/api/health', async (req, res) => {
     res.set('Cache-Control', 'no-store');

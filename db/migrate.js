@@ -10,6 +10,7 @@ try {
   await client.query(readFileSync(new URL('./migrate.sql', import.meta.url), 'utf8'));
   if (process.env.ADMIN_EMAIL || process.env.ADMIN_PASSWORD) await seedAdmin(client);
   await client.query('COMMIT');
+  await client.query(readFileSync(new URL('./migrations/013_orders.sql', import.meta.url), 'utf8'));
   console.log('Миграция выполнена: users, products, orders. Прежние данные сохранены.');
 } catch (error) {
   if (client) await client.query('ROLLBACK');

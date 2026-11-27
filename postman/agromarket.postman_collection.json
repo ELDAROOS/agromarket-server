@@ -2,7 +2,7 @@
   "info": {
     "name": "AgroMarket API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "ЛР7. Укажите adminEmail и adminPassword в локальном Environment Postman. Реальный пароль и токены в экспорт не включены. Наследуемый Bearer token заполняется запросом входа администратора. npm run test:postman берёт пароль из .env, использует временную схему и запускает коллекцию дважды."
+    "description": "ЛР7. Укажите adminEmail и adminPassword в локальном Environment Postman. Реальный пароль и токены в экспорт не включены. Наследуемый Bearer token заполняется запросом входа администратора. npm run test:postman берёт пароль из .env, использует временную схему и запускает коллекцию дважды. Папка ЛР13 создаёт учебный товар и отменяет розничный заказ. Запускайте её на учебной базе."
   },
   "variable": [
     {
@@ -32,6 +32,14 @@
     {
       "key": "orderId",
       "value": ""
+    },
+    {
+      "key": "checkoutProductId",
+      "value": ""
+    },
+    {
+      "key": "checkoutOrderId",
+      "value": ""
     }
   ],
   "item": [
@@ -52,7 +60,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Статус 200', () => pm.response.to.have.status(200));",
-              "pm.test('База подключена', () => pm.expect(pm.response.json().db).to.eql('connected'));"
+              "pm.test('База подключена', () => pm.expect(pm.response.json().db).to.eql('ok'));"
             ]
           }
         }
@@ -618,6 +626,199 @@
               "pm.test('Статус 401', () => pm.response.to.have.status(401));"
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "ЛР13 Розничные заказы",
+      "item": [
+        {
+          "name": "Создать товар с остатком 20",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/products",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Тестовый мёд для розницы\",\"price\":3500,\"stock\":20}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('checkoutProductId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Оформить заказ на 2 единицы",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[{\"productId\":{{checkoutProductId}},\"quantity\":2,\"price\":1}],\"address\": \"Астана, ул. Женис, 62\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 201', () => pm.response.to.have.status(201));",
+                  "const order = pm.response.json();",
+                  "pm.test('Цена взята из базы', () => pm.expect(order.total).to.eql(7000));",
+                  "pm.collectionVariables.set('checkoutOrderId', order.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Запросить больше доступного остатка",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[{\"productId\":{{checkoutProductId}},\"quantity\":100,\"price\":1}],\"address\": \"Астана, ул. Женис, 62\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Доступно 18 единиц', () => pm.expect(pm.response.json().details[0].available).to.eql(18));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить пустую корзину",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[],\"address\": \"Астана, ул. Женис, 62\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Ошибка корзины', () => pm.expect(pm.response.json().details[0].message).to.eql('Корзина пуста'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отменить заказ",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/orders/{{checkoutOrderId}}/cancel",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Заказ отменён', () => pm.expect(pm.response.json().status).to.eql('cancelled'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
