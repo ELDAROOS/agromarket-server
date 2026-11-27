@@ -17,6 +17,7 @@ export async function testDatabase() {
   }
   try {
     await database.query(readFileSync(new URL('../db/schema.sql', import.meta.url), 'utf8'));
+    await database.query(readFileSync(new URL('../db/migrations/013_orders.sql', import.meta.url), 'utf8'));
     const { products } = JSON.parse(readFileSync(new URL('../data/db.json', import.meta.url), 'utf8'));
     for (const p of products) await database.query('INSERT INTO products (name, price, image) VALUES ($1,$2,$3)', [p.name, p.price, p.image]);
     await seedAdmin(database);
