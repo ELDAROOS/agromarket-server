@@ -4,7 +4,7 @@ import { productSchema, productUpdateSchema } from '../validation/schemas.js';
 
 export function createProductsRouter(pool, auth) {
   const router = Router();
-  const adminOnly = [auth.requireAuth, auth.requireRole('farmer', 'admin')];
+  const canManageProducts = [auth.requireAuth, auth.requireRole('farmer', 'admin')];
 
   router.get('/', async (req, res) => {
     const { search = '', maxPrice, limit = '20', offset = '0', sort = '' } = req.query;
@@ -34,11 +34,11 @@ export function createProductsRouter(pool, auth) {
     res.json(rows[0]);
   });
 
-  router.post('/', adminOnly, validate(productSchema), async (req, res) => {
+  router.post('/', canManageProducts, validate(productSchema), async (req, res) => {
     const body = req.body;
-    const { rows } = await pool.query(`INSERT INTO products (name, category, price, unit, image)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [body.name, body.category ?? null, Number(body.price), body.unit ?? 'кг', body.image ?? null]);
+    const { rows } = await pool.query(`INSERT INTO products (name, category, price, unit, image, stock, farmer_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [body.name, body.category ?? null, Number(body.price), body.unit ?? 'кг', body.image ?? null, body.stock ?? 0, req.user.id]);
     res.status(201).json(rows[0]);
   });
 
@@ -47,7 +47,7 @@ export function createProductsRouter(pool, auth) {
     const vals = [];
     let idx = 1;
     for (const [key, val] of Object.entries(req.body)) {
-      if (['name', 'category', 'price', 'unit', 'image'].includes(key)) {
+      if (['name', 'category', 'price', 'unit', 'image', 'stock'].includes(key)) {
         fields.push(`${key} = $${idx++}`);
         vals.push(key === 'price' ? Number(val) : val);
       }
@@ -55,20 +55,29 @@ export function createProductsRouter(pool, auth) {
     if (fields.length === 0) {
       return res.status(400).json({ error: 'Нет полей для обновления' });
     }
-    vals.push(req.params.id);
+    vals.push(req.params.id, req.user.role === 'admin' ? null : req.user.id);
     const { rows } = await pool.query(
-      `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx} AND ($${idx + 1}::int IS NULL OR farmer_id = $${idx + 1}) RETURNING *`,
       vals
     );
     if (!rows.length) return res.status(404).json({ error: 'Товар не найден' });
     res.json(rows[0]);
   }
 
-  router.put('/:id', idParam, adminOnly, validate(productUpdateSchema), updateProductHandler);
-  router.patch('/:id', idParam, adminOnly, validate(productUpdateSchema), updateProductHandler);
+  router.put('/:id', idParam, canManageProducts, validate(productUpdateSchema), updateProductHandler);
+  router.patch('/:id', idParam, canManageProducts, validate(productUpdateSchema), updateProductHandler);
 
-  router.delete('/:id', idParam, adminOnly, async (req, res) => {
-    const { rowCount } = await pool.query('DELETE FROM products WHERE id=$1', [req.params.id]);
+  router.delete('/:id', idParam, canManageProducts, async (req, res) => {
+    let rowCount;
+    try {
+      ({ rowCount } = await pool.query(
+        'DELETE FROM products WHERE id = $1 AND ($2::int IS NULL OR farmer_id = $2)',
+        [req.params.id, req.user.role === 'admin' ? null : req.user.id],
+      ));
+    } catch (error) {
+      if (error.code !== '23503') throw error;
+      return res.status(409).json({ error: 'Товар есть в заказах. Установите остаток 0, чтобы прекратить продажи.' });
+    }
     if (!rowCount) return res.status(404).json({ error: 'Товар не найден' });
     res.status(204).end();
   });
